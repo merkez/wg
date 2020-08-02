@@ -22,6 +22,10 @@ AllowedIPs = 192.168.0.2/32
 Endpoint = 37.130.122.223:38683
 */
 
+// add gRPC connection
+// tests
+// parse configuration
+
 const (
 	// wireguard should be installed before hand
 	wgManageBin = "wg"
