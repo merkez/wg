@@ -2,11 +2,19 @@ syntax="proto3";
 
 // todo: GenInterface
 
-service wireguard {
+service Wireguard {
+
+    rpc InitializeI(IReq) returns (IResp) {}
+
     rpc AddPeer(AddPReq) returns (AddPResp) {}
     rpc DelPeer(DelPReq) returns (DelPResp) {}
+
     rpc ManageNIC(ManageNICReq) returns (ManageNICResp) {}
+
     rpc GetNICInfo(NICInfoReq) returns (NICInfoResp) {}
+    rpc GetPublicKey(PubKeyReq) returns (PubKeyResp) {}
+    rpc GetPrivateKey(PrivKeyReq) returns (PrivKeyResp) {}
+
 }
 
 message AddPReq {
@@ -19,6 +27,20 @@ message AddPReq {
 message AddPResp {
     string message = 1;
 }
+
+message IReq {
+    string address = 1;
+    uint32 listenPort = 2;
+    bool saveConfig = 3;
+    string privateKey = 4;
+    string eth = 5;
+    string iName = 6;
+}
+message IResp {
+    // message could be error or ordinary result depend on function result.
+    string message = 1 ;
+}
+
 
 message DelPReq {
     string peerPublicKey = 1;
@@ -47,5 +69,19 @@ message NICInfoResp {
     string message = 1;
 }
 
+message PubKeyReq {
+    string nicPub = 1;  // name of wireguard interface
+}
 
+message PubKeyResp {
+    string publicKey = 1;
+}
+
+message PrivKeyReq {
+    string nicPriv = 1; // name of wireguard interface
+}
+
+message PrivKeyResp {
+    string privateKey  = 1;
+}
 
