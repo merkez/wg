@@ -1,0 +1,51 @@
+syntax="proto3";
+
+// todo: GenInterface
+
+service wireguard {
+    rpc AddPeer(AddPReq) returns (AddPResp) {}
+    rpc DelPeer(DelPReq) returns (DelPResp) {}
+    rpc ManageNIC(ManageNICReq) returns (ManageNICResp) {}
+    rpc GetNICInfo(NICInfoReq) returns (NICInfoResp) {}
+}
+
+message AddPReq {
+    string nic = 1;
+    string allowedIPs = 2;
+    string publicKey = 3;
+}
+
+
+message AddPResp {
+    string message = 1;
+}
+
+message DelPReq {
+    string peerPublicKey = 1;
+    string ipAddress  = 2;
+}
+
+message DelPResp {
+    string message = 1;
+}
+
+message ManageNICReq {
+//    manage NIC is responsible to up and down given interface
+    string nic = 1;
+    string cmd = 2; // up or down
+}
+
+message ManageNICResp {
+    string message = 1;
+}
+
+message NICInfoReq {
+    string interface = 1;
+}
+
+message NICInfoResp {
+    string message = 1;
+}
+
+
+
