@@ -1,9 +1,10 @@
-package wireguard_setup
+package wg
 
 import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 )
@@ -21,7 +22,7 @@ const (
 
 type Interface struct {
 	address    string // subnet
-	saveConfig string
+	saveConfig bool
 	listenPort uint32
 	privateKey string
 	eth        string
@@ -68,12 +69,20 @@ func nicInfo(nicName string) ([]byte, error) {
 // wg genkey | tee privatekey | wg pubkey > publickey
 
 // wg pubkey < privatekey > publickey
-func generatePublicKey(privateKeyName, publicKeyName string) (string, error) {
-	out, err := WireGuardCmd(context.Background(), wgManageBin, "pubkey", "<", privateKeyName, ">", publicKeyName)
+func generatePublicKey(privateKeyName, publicKeyName string) error {
+	data, err := ioutil.ReadFile("/etc/wireguard/" + privateKeyName)
 	if err != nil {
-		return "", err
+		fmt.Println("File reading error", err)
+		return err
 	}
-	return string(out), nil
+	out, err := WireGuardCmd(context.Background(), wgManageBin, "pubkey", "<", string(data))
+	if err != nil {
+		return err
+	}
+	if err := writeToFile("/etc/wireguard/"+publicKeyName, string(out)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // wg-quick up wg0
@@ -88,10 +97,13 @@ func upDown(nic, cmd string) (string, error) {
 }
 
 //wg genkey > privatekey
-func generatePrivateKey(privateKeyName string) (string, error) {
-	out, err := WireGuardCmd(context.Background(), wgManageBin, "genkey", ">", privateKeyName)
+func generatePrivateKey(ctx context.Context, privateKeyName string) (string, error) {
+	out, err := WireGuardCmd(ctx, wgManageBin, "genkey")
 	if err != nil {
-		return "", err
+		return "Error on running wg bin, unable to generate private key", fmt.Errorf("GeneratePrivateKey error %v", err)
+	}
+	if err := writeToFile("/etc/wireguard/"+privateKeyName, string(out)); err != nil {
+		return "WriteToFile Error ", err
 	}
 	return string(out), nil
 }
@@ -102,9 +114,10 @@ func genInterfaceConf(i Interface, confPath string) (string, error) {
 		`[Interface]
 Address = %s
 ListenPort = %d
+SaveConfig = %v
 PrivateKey = %s
 PostUp = iptables -A FORWARD -i %s -j ACCEPT; iptables -t nat -A POSTROUTING -o %s -j MASQUERADE
-PostDown = iptables -D FORWARD -i %s -j ACCEPT; iptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.privateKey,
+PostDown = iptables -D FORWARD -i %s -j ACCEPT; iptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.saveConfig, i.privateKey,
 		i.iName, i.eth, i.iName, i.eth)
 
 	if err := writeToFile(confPath+"/"+i.iName+".conf", wgConf); err != nil {
