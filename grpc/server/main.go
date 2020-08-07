@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/mrturkmencom/wireguard-setup/wg"
-	proto "github.com/mrturkmencom/wireguard-setup/wg/proto"
+	"github.com/mrturkmencom/wg/wg"
+	proto "github.com/mrturkmencom/wg/wg/proto"
 	"google.golang.org/grpc"
 )
 

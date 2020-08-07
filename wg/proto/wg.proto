@@ -8,12 +8,12 @@ service Wireguard {
 
     rpc AddPeer(AddPReq) returns (AddPResp) {}
     rpc DelPeer(DelPReq) returns (DelPResp) {}
-
+    rpc ListPeers(ListPeersReq) returns (ListPeersResp) {}
     rpc ManageNIC(ManageNICReq) returns (ManageNICResp) {}
 
     rpc GetNICInfo(NICInfoReq) returns (NICInfoResp) {}
-    rpc GetPublicKey(PubKeyReq) returns (PubKeyResp) {}
-    rpc GetPrivateKey(PrivKeyReq) returns (PrivKeyResp) {}
+    rpc GenPublicKey(PubKeyReq) returns (PubKeyResp) {}
+    rpc GenPrivateKey(PrivKeyReq) returns (PrivKeyResp) {}
 
 }
 
@@ -26,6 +26,28 @@ message AddPReq {
 
 message AddPResp {
     string message = 1;
+}
+
+message ListPeersReq {
+    string nicname = 1;
+    string error  = 2;
+}
+
+message ListPeersResp {
+    repeated interface i  =1;
+    repeated peer p = 2;
+
+    message interface {
+        string nicname = 1;
+        string publicKey  = 2;
+        uint32 listeningPort = 3;
+    }
+    message peer {
+        string endpoint = 1;
+        string allowedIPs =2;
+        string latestHandshake=3;
+        string transfer = 4;
+    }
 }
 
 message IReq {
@@ -78,10 +100,10 @@ message PubKeyResp {
 }
 
 message PrivKeyReq {
-    string nicPriv = 1; // name of wireguard interface
+    string privateKeyName = 1;
 }
 
 message PrivKeyResp {
-    string privateKey  = 1;
+    string message  = 1;
 }
 

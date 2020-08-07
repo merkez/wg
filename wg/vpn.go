@@ -69,16 +69,18 @@ func nicInfo(nicName string) ([]byte, error) {
 // wg genkey | tee privatekey | wg pubkey > publickey
 
 // wg pubkey < privatekey > publickey
-func generatePublicKey(privateKeyName, publicKeyName string) error {
+func generatePublicKey(ctx context.Context, privateKeyName, publicKeyName string) error {
+	// todo: change conf path through viper
 	data, err := ioutil.ReadFile("/etc/wireguard/" + privateKeyName)
 	if err != nil {
 		fmt.Println("File reading error", err)
 		return err
 	}
-	out, err := WireGuardCmd(context.Background(), wgManageBin, "pubkey", "<", string(data))
+	out, err := WireGuardCmd(ctx, wgManageBin, "pubkey", "<", string(data))
 	if err != nil {
 		return err
 	}
+	// todo: change file path through viper.
 	if err := writeToFile("/etc/wireguard/"+publicKeyName, string(out)); err != nil {
 		return err
 	}
@@ -88,8 +90,8 @@ func generatePublicKey(privateKeyName, publicKeyName string) error {
 // wg-quick up wg0
 // wg0 configuration file should be exists at /etc/wireguard/
 // or the place where docker is mounted
-func upDown(nic, cmd string) (string, error) {
-	_, err := WireGuardCmd(context.Background(), wgQuickBin, cmd, nic)
+func upDown(ctx context.Context, nic, cmd string) (string, error) {
+	_, err := WireGuardCmd(ctx, wgQuickBin, cmd, nic)
 	if err != nil {
 		return "Error: ", err
 	}
@@ -102,6 +104,7 @@ func generatePrivateKey(ctx context.Context, privateKeyName string) (string, err
 	if err != nil {
 		return "Error on running wg bin, unable to generate private key", fmt.Errorf("GeneratePrivateKey error %v", err)
 	}
+	// todo: change file path through viper.
 	if err := writeToFile("/etc/wireguard/"+privateKeyName, string(out)); err != nil {
 		return "WriteToFile Error ", err
 	}
@@ -119,7 +122,7 @@ PrivateKey = %s
 PostUp = iptables -A FORWARD -i %s -j ACCEPT; iptables -t nat -A POSTROUTING -o %s -j MASQUERADE
 PostDown = iptables -D FORWARD -i %s -j ACCEPT; iptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.saveConfig, i.privateKey,
 		i.iName, i.eth, i.iName, i.eth)
-
+	// todo: change file path through viper.
 	if err := writeToFile(confPath+"/"+i.iName+".conf", wgConf); err != nil {
 		return "GenInterface Error:  ", err
 	}

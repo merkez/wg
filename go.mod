@@ -1,4 +1,4 @@
-module github.com/mrturkmencom/wireguard-setup
+module github.com/mrturkmencom/wg
 
 go 1.13
 

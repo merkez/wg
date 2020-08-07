@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	wg "github.com/mrturkmencom/wireguard-setup/wg/proto"
+	wg "github.com/mrturkmencom/wg/wg/proto"
 
 	"google.golang.org/grpc"
 )

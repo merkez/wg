@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/mrturkmencom/wireguard-setup/wg/proto"
+	pb "github.com/mrturkmencom/wg/wg/proto"
 )
 
 type Wireguard struct {
 	// add authenticator
 	// maybe configuration
+	// improve configuration
 }
 
 func (w *Wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, error) {
@@ -67,16 +68,31 @@ func (w *Wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICIn
 }
 
 func (w *Wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.ManageNICResp, error) {
-	// todo : add up and down commands
-	return &pb.ManageNICResp{}, nil
+	out, err := upDown(ctx, r.Nic, r.Cmd)
+	if err != nil {
+		return &pb.ManageNICResp{Message: string(out)}, err
+	}
+	return &pb.ManageNICResp{Message: out}, nil
 }
 
-func (w *Wireguard) GetPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
-	// privatekey
-	return &pb.PrivKeyResp{}, nil
+// wg show <interface-name>
+// if interface-name is not provided by user list for all.
+func (w *Wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.ListPeersResp, error) {
+	// todo: list peers based on user request
+	return &pb.ListPeersResp{}, nil
+}
+func (w *Wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
+	_, err := generatePrivateKey(ctx, r.PrivateKeyName)
+	if err != nil {
+		return &pb.PrivKeyResp{}, err
+	}
+	return &pb.PrivKeyResp{Message: "Private Key is created with name " + r.PrivateKeyName}, nil
 }
 
-func (w *Wireguard) GetPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
-	// todo: get public key
+func (w *Wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
+	// check whether private key exists or not
 	return &pb.PubKeyResp{}, nil
 }
+
+// todo: add GetPrivateKey
+// todo add GetPublicKey functions
