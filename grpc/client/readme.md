@@ -1,7 +1,7 @@
 # Client
 
 ## Development
-For the development purposes, **evans** can be used without dealing with client side gRPC calls. 
+For the development purposes, **evans** can be used without dealing with client side gRPC codes. 
 
 Check out **evans**  tool here : [https://github.com/ktr0731/evans](https://github.com/ktr0731/evans)
 
