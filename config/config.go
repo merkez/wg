@@ -36,9 +36,10 @@ type CertConfig struct {
 	CAFile    string
 }
 
-func initializeConfig() error {
+func InitializeConfig() error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
+	viper.AddConfigPath("./config")
 	err := viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("fatal error config file: config \n ", err)

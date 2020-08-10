@@ -1,7 +1,7 @@
 wg:
   eth: ens3
   # dir is the place where configuration files of wg are located.
-  dir: /etc/wireguard
+  dir: /etc/wireguard/
   udp-port: 51871
 
 grpc:
