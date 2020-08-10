@@ -14,6 +14,8 @@ service Wireguard {
     rpc GetNICInfo(NICInfoReq) returns (NICInfoResp) {}
     rpc GenPublicKey(PubKeyReq) returns (PubKeyResp) {}
     rpc GenPrivateKey(PrivKeyReq) returns (PrivKeyResp) {}
+    rpc GetPrivateKey(PrivKeyReq) returns (PrivKeyResp) {}
+    rpc GetPublicKey(PubKeyReq) returns (PubKeyResp) {}
 
 }
 
@@ -92,11 +94,12 @@ message NICInfoResp {
 }
 
 message PubKeyReq {
-    string nicPub = 1;  // name of wireguard interface
+    string pubKeyName = 1;  // name of wireguard interface
+    string privKeyName =2;
 }
 
 message PubKeyResp {
-    string publicKey = 1;
+    string message = 1;
 }
 
 message PrivKeyReq {

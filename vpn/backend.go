@@ -3,8 +3,9 @@ package wg
 import (
 	"context"
 	"fmt"
+	"os"
 
-	pb "github.com/mrturkmencom/wg/wg/proto"
+	pb "github.com/mrturkmencom/wg/proto"
 )
 
 type Wireguard struct {
@@ -28,12 +29,12 @@ func (w *Wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, err
 		saveConfig: r.SaveConfig,
 		iName:      r.IName,
 	}
-	out, err := genInterfaceConf(wgI, "/etc/wireguard")
+	out, err := genInterfaceConf(wgI, dir.(string))
 	if err != nil {
 		return &pb.IResp{Message: out}, err
 	}
 
-	out, err = upDown(r.IName, "up")
+	out, err = upDown(ctx, r.IName, "up")
 	if err != nil {
 		return &pb.IResp{Message: out}, err
 	}
@@ -90,9 +91,33 @@ func (w *Wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.Pr
 }
 
 func (w *Wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
-	// check whether private key exists or not
-	return &pb.PubKeyResp{}, nil
+	// check whether private key exists or not, if not generate one
+	if _, err := os.Stat(dir.(string) + r.PrivKeyName); os.IsNotExist(err) {
+		_, err := generatePrivateKey(ctx, r.PrivKeyName)
+		if err != nil {
+			return &pb.PubKeyResp{Message: "Error"}, fmt.Errorf("error in generation of private key %v", err)
+		}
+	}
+	if err := generatePublicKey(ctx, r.PrivKeyName, r.PubKeyName); err != nil {
+		return &pb.PubKeyResp{}, err
+	}
+	return &pb.PubKeyResp{Message: "Public key is generated with " + r.PubKeyName + " name"}, nil
 }
 
-// todo: add GetPrivateKey
-// todo add GetPublicKey functions
+func (w *Wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.PubKeyResp, error) {
+	//todo: check auth here
+	out, err := getContent(req.PubKeyName)
+	if err != nil {
+		return &pb.PubKeyResp{}, err
+	}
+	return &pb.PubKeyResp{Message: out}, nil
+}
+
+func (w *Wireguard) GetPrivateKey(ctx context.Context, req *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
+	//todo: check auth here
+	out, err := getContent(req.PrivateKeyName)
+	if err != nil {
+		return &pb.PrivKeyResp{}, err
+	}
+	return &pb.PrivKeyResp{Message: out}, nil
+}
