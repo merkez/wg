@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/mrturkmencom/wg/wg"
-	proto "github.com/mrturkmencom/wg/wg/proto"
+	proto "github.com/mrturkmencom/wg/proto"
+	"github.com/mrturkmencom/wg/vpn"
 	"google.golang.org/grpc"
 )
 
