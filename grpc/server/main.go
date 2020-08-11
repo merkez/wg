@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 
+	"google.golang.org/grpc/reflection"
+
 	proto "github.com/mrturkmencom/wg/proto"
 	"github.com/mrturkmencom/wg/vpn"
 	"google.golang.org/grpc"
@@ -18,11 +20,10 @@ func main() {
 	wgServer := wg.Wireguard{}
 
 	grpcServer := grpc.NewServer()
-
+	reflection.Register(grpcServer)
 	proto.RegisterWireguardServer(grpcServer, &wgServer)
-
+	fmt.Println("wireguard gRPC server is running ....")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %s", err)
 	}
-	fmt.Println("wireguard gRPC server is running ....")
 }
