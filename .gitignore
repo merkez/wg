@@ -16,3 +16,6 @@
 
 # Intellij cache file
 .idea
+
+# include redundant .DS_Store
+.DS_Store
