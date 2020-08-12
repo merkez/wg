@@ -2,19 +2,29 @@ package wg
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
+
+	"google.golang.org/grpc/credentials"
+
+	"github.com/mrturkmencom/wg/config"
+
+	"google.golang.org/grpc"
 
 	pb "github.com/mrturkmencom/wg/proto"
 )
 
-type Wireguard struct {
-	// add authenticator
-	// maybe configuration
-	// improve configuration
+type wireguard struct {
+	auth   Authenticator
+	config *config.Config
 }
 
-func (w *Wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, error) {
+func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, error) {
 	s, err := generatePrivateKey(ctx, r.IName+"_private_key")
 	if err != nil {
 		return &pb.IResp{}, err
@@ -42,7 +52,7 @@ func (w *Wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, err
 	return &pb.IResp{Message: out}, nil
 }
 
-func (w *Wireguard) AddPeer(ctx context.Context, r *pb.AddPReq) (*pb.AddPResp, error) {
+func (w *wireguard) AddPeer(ctx context.Context, r *pb.AddPReq) (*pb.AddPResp, error) {
 
 	out, err := addPeer(r.Nic, r.PublicKey, r.AllowedIPs)
 	if err != nil {
@@ -51,7 +61,7 @@ func (w *Wireguard) AddPeer(ctx context.Context, r *pb.AddPReq) (*pb.AddPResp, e
 	return &pb.AddPResp{Message: out}, nil
 }
 
-func (w *Wireguard) DelPeer(ctx context.Context, r *pb.DelPReq) (*pb.DelPResp, error) {
+func (w *wireguard) DelPeer(ctx context.Context, r *pb.DelPReq) (*pb.DelPResp, error) {
 	out, err := removePeer(r.PeerPublicKey, r.IpAddress)
 	if err != nil {
 		return &pb.DelPResp{Message: out}, err
@@ -60,7 +70,7 @@ func (w *Wireguard) DelPeer(ctx context.Context, r *pb.DelPReq) (*pb.DelPResp, e
 	return &pb.DelPResp{Message: out}, nil
 }
 
-func (w *Wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICInfoResp, error) {
+func (w *wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICInfoResp, error) {
 	out, err := nicInfo(r.Interface)
 	if err != nil {
 		return &pb.NICInfoResp{Message: string(out)}, err
@@ -68,7 +78,7 @@ func (w *Wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICIn
 	return &pb.NICInfoResp{Message: string(out)}, nil
 }
 
-func (w *Wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.ManageNICResp, error) {
+func (w *wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.ManageNICResp, error) {
 	out, err := upDown(ctx, r.Nic, r.Cmd)
 	if err != nil {
 		return &pb.ManageNICResp{Message: string(out)}, err
@@ -78,11 +88,11 @@ func (w *Wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.Mana
 
 // wg show <interface-name>
 // if interface-name is not provided by user list for all.
-func (w *Wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.ListPeersResp, error) {
+func (w *wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.ListPeersResp, error) {
 	// todo: list peers based on user request
 	return &pb.ListPeersResp{}, nil
 }
-func (w *Wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
+func (w *wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
 	_, err := generatePrivateKey(ctx, r.PrivateKeyName)
 	if err != nil {
 		return &pb.PrivKeyResp{}, err
@@ -90,7 +100,7 @@ func (w *Wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.Pr
 	return &pb.PrivKeyResp{Message: "Private Key is created with name " + r.PrivateKeyName}, nil
 }
 
-func (w *Wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
+func (w *wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
 	// check whether private key exists or not, if not generate one
 	if _, err := os.Stat(dir.(string) + r.PrivKeyName); os.IsNotExist(err) {
 		_, err := generatePrivateKey(ctx, r.PrivKeyName)
@@ -104,7 +114,7 @@ func (w *Wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubK
 	return &pb.PubKeyResp{Message: "Public key is generated with " + r.PubKeyName + " name"}, nil
 }
 
-func (w *Wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.PubKeyResp, error) {
+func (w *wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.PubKeyResp, error) {
 	//todo: check auth here
 	out, err := getContent(req.PubKeyName)
 	if err != nil {
@@ -113,11 +123,86 @@ func (w *Wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.Pu
 	return &pb.PubKeyResp{Message: out}, nil
 }
 
-func (w *Wireguard) GetPrivateKey(ctx context.Context, req *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
+func (w *wireguard) GetPrivateKey(ctx context.Context, req *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
 	//todo: check auth here
 	out, err := getContent(req.PrivateKeyName)
 	if err != nil {
 		return &pb.PrivKeyResp{}, err
 	}
 	return &pb.PrivKeyResp{Message: out}, nil
+}
+
+func GetCreds(conf config.CertConfig) (credentials.TransportCredentials, error) {
+	log.Printf("Preparing credentials for RPC")
+
+	certificate, err := tls.LoadX509KeyPair(conf.CertFile, conf.CertKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not load server key pair: %s", err)
+	}
+
+	// Create a certificate pool from the certificate authority
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile(conf.CAFile)
+	if err != nil {
+		return nil, fmt.Errorf("could not read ca certificate: %s", err)
+	}
+	// CA file for let's encrypt is located under domain conf as `chain.pem`
+	// pass chain.pem location
+	// Append the client certificates from the CA
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		return nil, errors.New("failed to append client certs")
+	}
+
+	// Create the TLS credentials
+	creds := credentials.NewTLS(&tls.Config{
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		Certificates: []tls.Certificate{certificate},
+		ClientCAs:    certPool,
+	})
+	return creds, nil
+}
+
+func SecureConn(conf config.CertConfig) ([]grpc.ServerOption, error) {
+	if conf.Enabled {
+		creds, err := GetCreds(conf)
+
+		if err != nil {
+			return []grpc.ServerOption{}, errors.New("Error on retrieving certificates: " + err.Error())
+		}
+		log.Printf("Server is running in secure mode !")
+		return []grpc.ServerOption{grpc.Creds(creds)}, nil
+	}
+	return []grpc.ServerOption{}, nil
+}
+
+func InitServer(conf *config.Config) (*wireguard, error) {
+
+	gRPCServer := &wireguard{
+		auth:   NewAuthenticator(conf.GrpcConfig.Auth.SKey, conf.GrpcConfig.Auth.AKey),
+		config: conf,
+	}
+	return gRPCServer, nil
+}
+
+func (w *wireguard) AddAuth(opts ...grpc.ServerOption) *grpc.Server {
+	streamInterceptor := func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if err := w.auth.AuthenticateContext(stream.Context()); err != nil {
+			return err
+		}
+		return handler(srv, stream)
+	}
+
+	unaryInterceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if err := w.auth.AuthenticateContext(ctx); err != nil {
+			return nil, err
+		}
+		return handler(ctx, req)
+	}
+
+	opts = append([]grpc.ServerOption{
+		grpc.StreamInterceptor(streamInterceptor),
+		grpc.UnaryInterceptor(unaryInterceptor),
+	}, opts...)
+	return grpc.NewServer(opts...)
+
 }
