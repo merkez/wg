@@ -5,37 +5,56 @@ import (
 	"fmt"
 	"log"
 
-	wg "github.com/mrturkmencom/wg/wg/proto"
+	"github.com/dgrijalva/jwt-go"
+	wg "github.com/mrturkmencom/wg/proto"
 
 	"google.golang.org/grpc"
 )
 
+type Creds struct {
+	Token    string
+	Insecure bool
+}
+
+func (c Creds) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{
+		"token": string(c.Token),
+	}, nil
+}
+
+func (c Creds) RequireTransportSecurity() bool {
+	return !c.Insecure
+}
+
 func main() {
 	var conn *grpc.ClientConn
-	conn, err := grpc.Dial(":9000", grpc.WithInsecure())
+	// wg is AUTH_KEY from vpn/auth.go
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"wg": "deneme",
+	})
+
+	tokenString, err := token.SignedString([]byte("test"))
 	if err != nil {
-		log.Fatalf("did not connect: %s", err)
+		fmt.Println("Error creating the token")
+	}
+
+	authCreds := Creds{Token: tokenString}
+	dialOpts := []grpc.DialOption{}
+	authCreds.Insecure = true
+	dialOpts = append(dialOpts,
+		grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(authCreds))
+
+	conn, err = grpc.Dial(":5353", dialOpts...)
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
 
 	client := wg.NewWireguardClient(conn)
 
-	_, err = client.GetPrivateKey(context.Background(), &wg.PrivKeyReq{NicPriv: "test_private_key"})
+	_, err = client.GenPrivateKey(context.Background(), &wg.PrivKeyReq{PrivateKeyName: "test_private_key"})
 	if err != nil {
-		fmt.Sprintf("Error happened in creating private key %v", err)
-		//panic(err)
+		fmt.Println(fmt.Sprintf("Error happened in creating private key %v", err))
 	}
-	//fmt.Println(r.PrivateKey)
-	//r, err := client.InitializeI(context.Background(), &wg.IReq{
-	//	Address:    "10.100.50.1/24",
-	//	ListenPort: 5280,
-	//	SaveConfig: true,
-	//	Eth:        "ens3",
-	//	IName:      "wg35",
-	//})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Printf("Response : %s", r.Message)
-
 }
