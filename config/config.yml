@@ -1,13 +1,13 @@
-wg:
+WgInterface:
   eth: ens3
   # dir is the place where configuration files of wg are located.
   dir: /etc/wireguard/
-  udp-port: 51871
+  udpPort: 51871
 
-grpc:
+GrpcConfig:
   domain:
-    endpoint: example.domain.com
-    port:
+    endpoint: localhost
+    port: 5353
   tls:
     enabled: false
     cert-file:
@@ -15,4 +15,5 @@ grpc:
     ca-file:
     directory:
   auth:
-    auth-key:
+    aKey: deneme
+    sKey: test

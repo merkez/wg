@@ -11,21 +11,26 @@ var (
 )
 
 type Config struct {
-	wgInterface WgConfig
-	grpcConfig  ConnConfig
+	WgInterface WgConfig
+	GrpcConfig  ConnConfig
 }
 
 type WgConfig struct {
-	eth     string
-	dir     string
-	udpPort uint
+	Eth     string
+	Dir     string
+	UdpPort uint
 }
 
 type ConnConfig struct {
-	grpcEndpoint string
-	port         uint
-	tls          CertConfig
-	auth         string
+	Domain struct {
+		Endpoint string
+		Port     uint
+	}
+	Tls  CertConfig
+	Auth struct {
+		AKey string
+		SKey string
+	}
 }
 
 type CertConfig struct {
@@ -36,19 +41,19 @@ type CertConfig struct {
 	CAFile    string
 }
 
-func InitializeConfig() error {
+func InitializeConfig() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
 	viper.AddConfigPath("./config")
 	err := viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("fatal error config file: config \n ", err)
-		return err
+		return nil, err
 	}
 	err = viper.Unmarshal(&configuration)
 	if err != nil {
 		fmt.Println("Unmarshalling fatal error config file: config \n ", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return configuration, nil
 }

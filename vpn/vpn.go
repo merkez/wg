@@ -31,7 +31,7 @@ var (
 	//gRPC settings
 	domain   = viper.Get("grpc.domain.endpoint")
 	grpcPort = viper.Get("grpc.domain.port")
-	tls      = viper.Get("tls.enabled")
+	secure   = viper.Get("tls.enabled")
 	certFile = viper.Get("tls.cert-file")
 	certKey  = viper.Get("tls.cert-key")
 	caFile   = viper.Get("tls.ca-file")
