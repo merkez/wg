@@ -24,6 +24,7 @@ type wireguard struct {
 	config *config.Config
 }
 
+// InitializeI creates interface configuration and make it UP.
 func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, error) {
 	log.Println("Initializing interface for wireguard ! ")
 	s, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.IName+"_priv")
@@ -52,6 +53,7 @@ func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, err
 	return &pb.IResp{Message: out}, nil
 }
 
+// AddPeer adds peer to given wireguard interface
 func (w *wireguard) AddPeer(ctx context.Context, r *pb.AddPReq) (*pb.AddPResp, error) {
 
 	out, err := addPeer(r.Nic, r.PublicKey, r.AllowedIPs)
@@ -61,6 +63,7 @@ func (w *wireguard) AddPeer(ctx context.Context, r *pb.AddPReq) (*pb.AddPResp, e
 	return &pb.AddPResp{Message: out}, nil
 }
 
+// DelPeer deletes peer from given wireguard interface
 func (w *wireguard) DelPeer(ctx context.Context, r *pb.DelPReq) (*pb.DelPResp, error) {
 	out, err := removePeer(r.PeerPublicKey, r.IpAddress)
 	if err != nil {
@@ -70,6 +73,7 @@ func (w *wireguard) DelPeer(ctx context.Context, r *pb.DelPReq) (*pb.DelPResp, e
 	return &pb.DelPResp{Message: out}, nil
 }
 
+// GetNICInfo returns general information about given wireguard interface
 func (w *wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICInfoResp, error) {
 	out, err := nicInfo(r.Interface)
 	if err != nil {
@@ -78,6 +82,7 @@ func (w *wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICIn
 	return &pb.NICInfoResp{Message: string(out)}, nil
 }
 
+// ManageNIC is managing (up & down) given wireguard interface
 func (w *wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.ManageNICResp, error) {
 	out, err := upDown(ctx, r.Nic, r.Cmd)
 	if err != nil {
@@ -92,6 +97,8 @@ func (w *wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.List
 	// todo: list peers based on user request
 	return &pb.ListPeersResp{}, nil
 }
+
+// GenPrivateKey generates PrivateKey for wireguard interface
 func (w *wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
 	_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivateKeyName)
 	if err != nil {
@@ -100,6 +107,7 @@ func (w *wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.Pr
 	return &pb.PrivKeyResp{Message: "Private Key is created with name " + w.config.WgInterface.Dir + r.PrivateKeyName}, nil
 }
 
+// GenPublicKey generates PublicKey for wireguard interface
 func (w *wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
 	// check whether private key exists or not, if not generate one
 	if _, err := os.Stat(w.config.WgInterface.Dir + r.PrivKeyName); os.IsNotExist(err) {
@@ -115,6 +123,7 @@ func (w *wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubK
 	return &pb.PubKeyResp{Message: "Public key is generated with " + w.config.WgInterface.Dir + r.PubKeyName + " name"}, nil
 }
 
+// GetPublicKey returns content of given PublicKey
 func (w *wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.PubKeyResp, error) {
 	//todo: check auth here
 	out, err := getContent(req.PubKeyName)
@@ -124,6 +133,7 @@ func (w *wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.Pu
 	return &pb.PubKeyResp{Message: out}, nil
 }
 
+// GetPrivateKey returns content of given PrivateKey
 func (w *wireguard) GetPrivateKey(ctx context.Context, req *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
 	//todo: check auth here
 	out, err := getContent(req.PrivateKeyName)
@@ -163,6 +173,7 @@ func GetCreds(conf config.CertConfig) (credentials.TransportCredentials, error) 
 	return creds, nil
 }
 
+// SecureConn enables communication over secure channel
 func SecureConn(conf config.CertConfig) ([]grpc.ServerOption, error) {
 	if conf.Enabled {
 		creds, err := GetCreds(conf)
@@ -185,6 +196,7 @@ func InitServer(conf *config.Config) (*wireguard, error) {
 	return gRPCServer, nil
 }
 
+// AddAuth adds authentication to gRPC server
 func (w *wireguard) AddAuth(opts ...grpc.ServerOption) *grpc.Server {
 	streamInterceptor := func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		if err := w.auth.AuthenticateContext(stream.Context()); err != nil {
