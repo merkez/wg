@@ -1,8 +1,8 @@
 WgInterface:
-  eth: ens3
+  eth: eth0
   # dir is the place where configuration files of wg are located.
   dir: /etc/wireguard/
-  udpPort: 51871
+  udpPort: 51820
 
 GrpcConfig:
   domain:
