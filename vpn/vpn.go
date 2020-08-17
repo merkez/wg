@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/spf13/viper"
+	"github.com/mrturkmencom/wg/config"
 )
 
 // add gRPC connection
@@ -20,23 +20,11 @@ const (
 	// wireguard should be installed before hand
 	wgManageBin = "wg"
 	wgQuickBin  = "wg-quick"
-	catCmd      = "cat"
 )
 
 var (
-	dir    = viper.Get("wg.dir")
-	udPort = viper.Get("wg.udp-port")
-	eth    = viper.Get("wg.eth")
-
-	//gRPC settings
-	domain   = viper.Get("grpc.domain.endpoint")
-	grpcPort = viper.Get("grpc.domain.port")
-	secure   = viper.Get("tls.enabled")
-	certFile = viper.Get("tls.cert-file")
-	certKey  = viper.Get("tls.cert-key")
-	caFile   = viper.Get("tls.ca-file")
-	certDir  = viper.Get("tls.directory")
-	authKey  = viper.Get("grpc.auth.auth-key")
+	// todo: fix configuration variables
+	configuration, _ = config.InitializeConfig()
 )
 
 type Interface struct {
@@ -89,18 +77,15 @@ func nicInfo(nicName string) ([]byte, error) {
 
 // wg pubkey < privatekey > publickey
 func generatePublicKey(ctx context.Context, privateKeyName, publicKeyName string) error {
+	directory := configuration.WgInterface.Dir
+	cmd := "wg pubkey < " + directory + privateKeyName
 
-	data, err := ioutil.ReadFile(dir.(string) + privateKeyName)
+	out, err := exec.CommandContext(ctx, "bash", "-c", cmd).Output()
 	if err != nil {
-		fmt.Println("File reading error", err)
-		return err
-	}
-	out, err := WireGuardCmd(ctx, wgManageBin, "pubkey", "<", string(data))
-	if err != nil {
-		return err
+		return fmt.Errorf("Failed to execute command: %s", cmd)
 	}
 
-	if err := writeToFile(dir.(string)+publicKeyName, string(out)); err != nil {
+	if err := writeToFile(directory+publicKeyName, string(out)); err != nil {
 		return err
 	}
 	return nil
@@ -124,7 +109,7 @@ func generatePrivateKey(ctx context.Context, privateKeyName string) (string, err
 		return "Error on running wg bin, unable to generate private key", fmt.Errorf("GeneratePrivateKey error %v", err)
 	}
 
-	if err := writeToFile(dir.(string)+privateKeyName, string(out)); err != nil {
+	if err := writeToFile(privateKeyName, string(out)); err != nil {
 		return "WriteToFile Error ", err
 	}
 	return string(out), nil
@@ -132,9 +117,9 @@ func generatePrivateKey(ctx context.Context, privateKeyName string) (string, err
 
 // getContent returns content of privateKey or publicKey depending on keyName
 func getContent(keyName string) (string, error) {
-	out, err := WireGuardCmd(context.Background(), catCmd, dir.(string)+keyName)
+	out, err := ioutil.ReadFile(configuration.WgInterface.Dir + keyName)
 	if err != nil {
-		return "Error: ", fmt.Errorf("cat error : %v", err)
+		return "", fmt.Errorf("could not read the file %s err: %v", keyName, err)
 	}
 	return string(out), nil
 }
@@ -151,10 +136,10 @@ PostUp = iptables -A FORWARD -i %s -j ACCEPT; iptables -t nat -A POSTROUTING -o 
 PostDown = iptables -D FORWARD -i %s -j ACCEPT; iptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.saveConfig, i.privateKey,
 		i.iName, i.eth, i.iName, i.eth)
 
-	if err := writeToFile(dir.(string)+i.iName+".conf", wgConf); err != nil {
+	if err := writeToFile(confPath+i.iName+".conf", wgConf); err != nil {
 		return "GenInterface Error:  ", err
 	}
-	return i.iName + " configuration saved to " + dir.(string), nil
+	return i.iName + " configuration saved to " + configuration.WgInterface.Dir, nil
 }
 
 // executes given  command from client
