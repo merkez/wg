@@ -36,21 +36,25 @@ message ListPeersReq {
 }
 
 message ListPeersResp {
-    repeated interface i  =1;
-    repeated peer p = 2;
-
-    message interface {
-        string nicname = 1;
-        string publicKey  = 2;
-        uint32 listeningPort = 3;
-    }
-    message peer {
-        string endpoint = 1;
-        string allowedIPs =2;
-        string latestHandshake=3;
-        string transfer = 4;
-    }
+    string response =1;
 }
+
+//message ListPeersResp {
+//    repeated interface i  =1;
+//    repeated peer p = 2;
+//
+//    message interface {
+//        string nicname = 1;
+//        string publicKey  = 2;
+//        uint32 listeningPort = 3;
+//    }
+//    message peer {
+//        string endpoint = 1;
+//        string allowedIPs =2;
+//        string latestHandshake=3;
+//        string transfer = 4;
+//    }
+//}
 
 message IReq {
     string address = 1;
