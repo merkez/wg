@@ -143,5 +143,17 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
    	}
    fmt.Println(downI.Message) 
    ````
-       
-
+  
+- ListPeers 
+   - Returns the content of command line which is `wg show <wg-interface>`
+   
+   Example Usage: 
+   ```go
+   	resp, err := client.ListPeers(context.Background(), &wg.ListPeersReq{Nicname: "wg0"})
+   	if err != nil {
+   		fmt.Printf("List peers error %v ", err)
+   		panic(err)
+   	}
+   	fmt.Println(resp.Response)
+  ```
+      
