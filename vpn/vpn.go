@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/mrturkmencom/wg/config"
 )
 
@@ -20,6 +22,19 @@ const (
 	// wireguard should be installed before hand
 	wgManageBin = "wg"
 	wgQuickBin  = "wg-quick"
+	// interfaceTemplating would be much better for listing peers
+	// however it is not very crucial at the moment, would be improved in future
+
+//	interfaceTemp = `
+//interface: {{.InterfaceName}}
+//	public key: {{.PublicKey}}
+//	private key: {{.PrivateKey}}
+//	listening port: {{.ListeningPort}}
+//peer: {{.PublicKey}}
+//	allowed ips: {{.Allowed-ips}}
+//	latest handshake: {{.Latest-handshake}}
+//	transfer: {{.Transfer}}
+//`
 )
 
 var (
@@ -63,6 +78,26 @@ func removePeer(peerPublicKey, ipAddress string) (string, error) {
 	return "Peer " + peerPublicKey + " deleted !", nil
 }
 
+// listPeers function basically returns output of executed command,
+// this returned data could be improved in order to have structured templating...
+func listPeers(ctx context.Context, interfaceName string) (string, error) {
+	// DO NOT return anything if wireguard interface is not given
+	if interfaceName == "" {
+		return "Error", fmt.Errorf("It is not possible to list peers for empty interface, provide valid interface name !")
+	}
+	out, err := WireGuardCmd(ctx, wgManageBin, "show", interfaceName)
+	if err != nil {
+		log.Warn().Msgf("List peers execution error %v", err)
+		return "Error", err
+	}
+
+	//t := template.Must(template.New("peers").Parse(interfaceName))
+	//if err := t.Execute(os.Stdout, string(out)); err != nil {
+	//	log.Warn().Msgf("executing template: %v", err)
+	//}
+	return string(out), err
+}
+
 // wg show <name-of-interface>
 func nicInfo(nicName string) ([]byte, error) {
 	out, err := WireGuardCmd(context.Background(), wgManageBin, "show", nicName)
@@ -82,7 +117,7 @@ func generatePublicKey(ctx context.Context, privateKeyName, publicKeyName string
 
 	out, err := exec.CommandContext(ctx, "bash", "-c", cmd).Output()
 	if err != nil {
-		return fmt.Errorf("Failed to execute command: %s", cmd)
+		return fmt.Errorf("failed to execute command: %s", cmd)
 	}
 
 	if err := writeToFile(directory+publicKeyName, string(out)); err != nil {
