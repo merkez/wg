@@ -24,7 +24,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
 
 ## Available gRPC calls
 
-- GenPrivateKey 
+- **GenPrivateKey**
     - Generates private key which is required to initialize wireguard interface.gRPC call requires only name of the file,
     which will have private key in it. 
     
@@ -39,7 +39,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
     ````
     Private key will be availabe in defined configuration directory in config.yml file.
     
-- GenPublicKey 
+- **GenPublicKey**
     - Generates pair of private key as public key, in order to use this functionality, it requires
     existing private key name (which is generated in earlier step) then public key name (-which will be generated-)
     
@@ -55,7 +55,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
     }
     ````
 
-- GetPrivateKey
+- **GetPrivateKey**
 
     - Despite of GenPrivateKey functionality, this one returns existing private key content. 
       
@@ -70,7 +70,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
       	fmt.Println(privateKey.Message)      
       }
       ````
-- GetPublicKey
+- **GetPublicKey**
 
     - Returns content of existing public key content
     ````go
@@ -84,7 +84,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
     }
     ````
 
-- InitializeI 
+- **InitializeI**
     -  It is for initializing wireguard interface in configuration folder which is provided in configuration file. It requires
        wireguard interface specifications, which are 
        ```raw
@@ -115,7 +115,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
        fmt.Println(interfaceGenResp.Message)
        ````
        
-- GetNICInfo
+- **GetNICInfo**
     - Returns information regarding to requested wireguard interface. 
    
    Example Usage:
@@ -131,7 +131,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
   	}
    ````
  
-- ManageNIC 
+- **ManageNIC**
     - It can up or down given wg interface. 
    
    Example Usage: 
@@ -144,7 +144,7 @@ $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
    fmt.Println(downI.Message) 
    ````
   
-- ListPeers 
+- **ListPeers** 
    - Returns the content of command line which is `wg show <wg-interface>`
    
    Example Usage: 
