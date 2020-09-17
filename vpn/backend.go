@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -28,15 +29,20 @@ type wireguard struct {
 // InitializeI creates interface configuration and make it UP.
 func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, error) {
 
-	s, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.IName+"_priv")
+	log.Info().Msgf("Initializing interface for %s ", r.IName)
+	privKey, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.IName+"_priv")
 	if err != nil {
+		return &pb.IResp{}, err
+	}
+	log.Info().Msgf("Private key is generated %s with name %s", w.config.WgInterface.Dir, r.IName)
+	if err := generatePublicKey(ctx, w.config.WgInterface.Dir+r.IName+"_priv", w.config.WgInterface.Dir+r.IName+"_pub"); err != nil {
 		return &pb.IResp{}, err
 	}
 
 	wgI := Interface{
 		address:    r.Address,
 		listenPort: r.ListenPort,
-		privateKey: s,
+		privateKey: privKey,
 		eth:        r.Eth,
 		saveConfig: r.SaveConfig,
 		iName:      r.IName,
@@ -46,7 +52,7 @@ func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, err
 		return &pb.IResp{Message: out}, err
 	}
 
-	out, err = upDown(ctx, r.IName, "up")
+	out, err = upDown(r.IName, "up")
 	if err != nil {
 		return &pb.IResp{Message: out}, err
 	}
@@ -63,6 +69,7 @@ func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, err
 func (w *wireguard) AddPeer(ctx context.Context, r *pb.AddPReq) (*pb.AddPResp, error) {
 
 	out, err := addPeer(r.Nic, r.PublicKey, r.AllowedIPs)
+	out = strings.Replace(out, "/n", "", -1)
 	if err != nil {
 		return &pb.AddPResp{Message: out}, err
 	}
@@ -93,7 +100,7 @@ func (w *wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICIn
 
 // ManageNIC is managing (up & down) given wireguard interface
 func (w *wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.ManageNICResp, error) {
-	out, err := upDown(ctx, r.Nic, r.Cmd)
+	out, err := upDown(r.Nic, r.Cmd)
 	if err != nil {
 		return &pb.ManageNICResp{Message: string(out)}, err
 	}
@@ -104,7 +111,7 @@ func (w *wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.Mana
 // wg show <interface-name>
 // if interface-name is not provided by user list for all.
 func (w *wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.ListPeersResp, error) {
-	out, err := listPeers(ctx, r.Nicname)
+	out, err := listPeers(r.Nicname)
 	if err != nil {
 		log.Printf("Error in listing peers in gRPC %v", err)
 		return &pb.ListPeersResp{}, err
@@ -116,7 +123,7 @@ func (w *wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.List
 // GenPrivateKey generates PrivateKey for wireguard interface
 func (w *wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
 
-	_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivateKeyName)
+	_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivateKeyName+"_priv")
 	if err != nil {
 		return &pb.PrivKeyResp{}, err
 	}
@@ -127,15 +134,15 @@ func (w *wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.Pr
 // GenPublicKey generates PublicKey for wireguard interface
 func (w *wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubKeyResp, error) {
 	// check whether private key exists or not, if not generate one
-	if _, err := os.Stat(w.config.WgInterface.Dir + r.PrivKeyName); os.IsNotExist(err) {
+	if _, err := os.Stat(w.config.WgInterface.Dir + r.PrivKeyName + "_pub"); os.IsNotExist(err) {
 		fmt.Printf("PrivateKeyFile is not exists, creating one ... %s\n", r.PrivKeyName)
-		_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivKeyName)
+		_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivKeyName+"_priv")
 		if err != nil {
 			return &pb.PubKeyResp{Message: "Error"}, fmt.Errorf("error in generation of private key %v", err)
 		}
 	}
 
-	if err := generatePublicKey(ctx, r.PrivKeyName, r.PubKeyName); err != nil {
+	if err := generatePublicKey(ctx, w.config.WgInterface.Dir+r.PrivKeyName+"_priv", w.config.WgInterface.Dir+r.PubKeyName+"_pub"); err != nil {
 		return &pb.PubKeyResp{}, err
 	}
 	return &pb.PubKeyResp{Message: "Public key is generated with " + w.config.WgInterface.Dir + r.PubKeyName + " name"}, nil
@@ -143,18 +150,21 @@ func (w *wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubK
 
 // GetPublicKey returns content of given PublicKey
 func (w *wireguard) GetPublicKey(ctx context.Context, req *pb.PubKeyReq) (*pb.PubKeyResp, error) {
-	//todo: check auth here
-	out, err := getContent(req.PubKeyName)
+
+	out, err := getContent(req.PubKeyName + "_pub")
 	if err != nil {
 		return &pb.PubKeyResp{}, err
 	}
+
+	out = strings.Replace(out, "\n", "", 1)
 	return &pb.PubKeyResp{Message: out}, nil
 }
 
 // GetPrivateKey returns content of given PrivateKey
 func (w *wireguard) GetPrivateKey(ctx context.Context, req *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
-	//todo: check auth here
-	out, err := getContent(req.PrivateKeyName)
+
+	log.Info().Msgf("Getting private key information for team %s", req.PrivateKeyName)
+	out, err := getContent(req.PrivateKeyName + "_priv")
 	if err != nil {
 		return &pb.PrivKeyResp{}, err
 	}
