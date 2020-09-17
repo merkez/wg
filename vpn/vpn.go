@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -20,8 +21,8 @@ import (
 
 const (
 	// wireguard should be installed before hand
-	wgManageBin = "wg"
-	wgQuickBin  = "wg-quick"
+	wgManageBin = "sudo wg"
+	wgQuickBin  = "sudo wg-quick"
 	// interfaceTemplating would be much better for listing peers
 	// however it is not very crucial at the moment, would be improved in future
 
@@ -61,31 +62,41 @@ type Peer struct {
 // wg set <wireguard-interface-name> <peer-public-key> allowed-ips 192.168.0.2/32
 // example <>
 func addPeer(nic, publicKey, allowedIPs string) (string, error) {
-	_, err := WireGuardCmd(context.Background(), wgManageBin, "set", nic, publicKey, "allowed-ips", allowedIPs)
+	cmd := wgManageBin + " set " + nic + " peer " + publicKey + " allowed-ips " + allowedIPs
+	//_, err := WireGuardCmd(context.Background(), wgManageBin, "set", nic, publicKey, "allowed-ips", allowedIPs)
+	log.Info().Msgf("Adding peer command is %s ", cmd)
+	out, err := WireGuardCmd(cmd)
 	if err != nil {
+		log.Error().Msgf("Error on setting peer on interface %v", err)
 		return "Failed", err
 	}
+	log.Info().Msgf("Add peer output %s", string(out))
 	return "Peer " + publicKey + " successfully added", nil
 }
 
 // removePeer will remove peer from VPN server
 // wg rm <peer-public-key> allowed-ips 192.168.0.2/32
 func removePeer(peerPublicKey, ipAddress string) (string, error) {
-	_, err := WireGuardCmd(context.Background(), wgManageBin, "rm", peerPublicKey, "allowed-ips", ipAddress)
+	log.Debug().Msgf("Peer with publickey { %s } is removing from %s", peerPublicKey, ipAddress)
+	cmd := wgManageBin + " rm " + peerPublicKey + " allowed-ips " + ipAddress
+	//_, err := WireGuardCmd(context.Background(), wgManageBin, "rm", peerPublicKey, "allowed-ips", ipAddress)
+	_, err := WireGuardCmd(cmd)
 	if err != nil {
 		return "Error", err
 	}
+
 	return "Peer " + peerPublicKey + " deleted !", nil
 }
 
 // listPeers function basically returns output of executed command,
 // this returned data could be improved in order to have structured templating...
-func listPeers(ctx context.Context, interfaceName string) (string, error) {
+func listPeers(interfaceName string) (string, error) {
 	// DO NOT return anything if wireguard interface is not given
 	if interfaceName == "" {
 		return "Error", fmt.Errorf("It is not possible to list peers for empty interface, provide valid interface name !")
 	}
-	out, err := WireGuardCmd(ctx, wgManageBin, "show", interfaceName)
+	cmd := wgManageBin + " show " + interfaceName
+	out, err := WireGuardCmd(cmd)
 	if err != nil {
 		log.Warn().Msgf("List peers execution error %v", err)
 		return "Error", err
@@ -100,7 +111,9 @@ func listPeers(ctx context.Context, interfaceName string) (string, error) {
 
 // wg show <name-of-interface>
 func nicInfo(nicName string) ([]byte, error) {
-	out, err := WireGuardCmd(context.Background(), wgManageBin, "show", nicName)
+	cmd := wgManageBin + " show " + nicName
+	log.Info().Msgf("Retrieving configuration of %s ", nicName)
+	out, err := WireGuardCmd(cmd)
 	if err != nil {
 		return []byte("Error: "), err
 	}
@@ -112,15 +125,16 @@ func nicInfo(nicName string) ([]byte, error) {
 
 // wg pubkey < privatekey > publickey
 func generatePublicKey(ctx context.Context, privateKeyName, publicKeyName string) error {
-	directory := configuration.WgInterface.Dir
-	cmd := "wg pubkey < " + directory + privateKeyName
+	//directory := configuration.WgInterface.Dir
+	log.Info().Msgf("Generating public key ...")
+	cmd := wgManageBin + " pubkey < " + privateKeyName
 
 	out, err := exec.CommandContext(ctx, "bash", "-c", cmd).Output()
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %s", cmd)
 	}
 
-	if err := writeToFile(directory+publicKeyName, string(out)); err != nil {
+	if err := writeToFile(publicKeyName, string(out)); err != nil {
 		return err
 	}
 	return nil
@@ -129,25 +143,30 @@ func generatePublicKey(ctx context.Context, privateKeyName, publicKeyName string
 // wg-quick up wg0
 // wg0 configuration file should be exists at /etc/wireguard/
 // or the place where docker is mounted
-func upDown(ctx context.Context, nic, cmd string) (string, error) {
-	_, err := WireGuardCmd(ctx, wgQuickBin, cmd, nic)
+func upDown(nic, cmd string) (string, error) {
+	command := wgQuickBin + " " + cmd + " " + nic
+	log.Info().Msgf("Interface %s is called to be %s", nic, cmd)
+	_, err := WireGuardCmd(command)
 	if err != nil {
-		return "Error: ", err
+		return "", fmt.Errorf("failed to execute command: %s error: %v", command, err)
 	}
 	return "Interface " + nic + " is " + cmd, nil
 }
 
 //wg genkey > privatekey
 func generatePrivateKey(ctx context.Context, privateKeyName string) (string, error) {
-	out, err := WireGuardCmd(ctx, wgManageBin, "genkey")
+	cmd := wgManageBin + " genkey"
+	log.Info().Msgf("Generating private key with name %s", privateKeyName)
+	out, err := WireGuardCmd(cmd)
 	if err != nil {
 		return "Error on running wg bin, unable to generate private key", fmt.Errorf("GeneratePrivateKey error %v", err)
 	}
-
-	if err := writeToFile(privateKeyName, string(out)); err != nil {
+	log.Info().Msgf("Private key is generated %s", privateKeyName)
+	output := strings.Replace(string(out), "\n", "", 1)
+	if err := writeToFile(privateKeyName, output); err != nil {
 		return "WriteToFile Error ", err
 	}
-	return string(out), nil
+	return output, nil
 }
 
 // getContent returns content of privateKey or publicKey depending on keyName
@@ -161,15 +180,21 @@ func getContent(keyName string) (string, error) {
 
 // will generate configuration file regarding to wireguard interface
 func genInterfaceConf(i Interface, confPath string) (string, error) {
+	log.Info().Msgf("Generating interface configuration file for event %s", i.iName)
+	upRule := "iptables -A FORWARD -i %i -j ACCEPT;  iptables -A FORWARD -o %i -j ACCEPT;"
+	downRule := "iptables -D FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT;"
 	wgConf := fmt.Sprintf(
-		`[Interface]
+		`
+[Interface]
 Address = %s
 ListenPort = %d
 SaveConfig = %v
 PrivateKey = %s
-PostUp = iptables -A FORWARD -i %s -j ACCEPT; iptables -t nat -A POSTROUTING -o %s -j MASQUERADE
-PostDown = iptables -D FORWARD -i %s -j ACCEPT; iptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.saveConfig, i.privateKey,
-		i.iName, i.eth, i.iName, i.eth)
+PostUp = sysctl -w net.ipv4.ip_forward=1
+PostUp = sysctl -w net.ipv6.conf.all.forwarding=1
+PostUp = %siptables -t nat -A POSTROUTING -o %s -j MASQUERADE
+PostDown = %siptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.saveConfig, i.privateKey,
+		upRule, i.eth, downRule, i.eth)
 
 	if err := writeToFile(confPath+i.iName+".conf", wgConf); err != nil {
 		return "GenInterface Error:  ", err
@@ -177,10 +202,9 @@ PostDown = iptables -D FORWARD -i %s -j ACCEPT; iptables -t nat -D POSTROUTING -
 	return i.iName + " configuration saved to " + configuration.WgInterface.Dir, nil
 }
 
-// executes given  command from client
-func WireGuardCmd(ctx context.Context, cmdBin, cmd string, cmds ...string) ([]byte, error) {
-	command := append([]string{cmd}, cmds...)
-	c := exec.CommandContext(ctx, cmdBin, command...)
+func WireGuardCmd(cmd string) ([]byte, error) {
+	log.Debug().Msgf("Executing command { %s }", cmd)
+	c := exec.Command("/bin/sh", "-c", cmd)
 	out, err := c.CombinedOutput()
 	if err != nil {
 		return nil, err
