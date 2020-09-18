@@ -154,7 +154,7 @@ func upDown(nic, cmd string) (string, error) {
 }
 
 //wg genkey > privatekey
-func generatePrivateKey(ctx context.Context, privateKeyName string) (string, error) {
+func generatePrivateKey(privateKeyName string) (string, error) {
 	cmd := wgManageBin + " genkey"
 	log.Info().Msgf("Generating private key with name %s", privateKeyName)
 	out, err := WireGuardCmd(cmd)
