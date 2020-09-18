@@ -20,9 +20,8 @@ type Config struct {
 }
 
 type WgConfig struct {
-	Eth     string
-	Dir     string
-	UdpPort uint
+	Eth string
+	Dir string
 }
 
 type ConnConfig struct {

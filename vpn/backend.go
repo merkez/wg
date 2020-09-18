@@ -30,7 +30,7 @@ type wireguard struct {
 func (w *wireguard) InitializeI(ctx context.Context, r *pb.IReq) (*pb.IResp, error) {
 
 	log.Info().Msgf("Initializing interface for %s ", r.IName)
-	privKey, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.IName+"_priv")
+	privKey, err := generatePrivateKey(w.config.WgInterface.Dir + r.IName + "_priv")
 	if err != nil {
 		return &pb.IResp{}, err
 	}
@@ -123,7 +123,7 @@ func (w *wireguard) ListPeers(ctx context.Context, r *pb.ListPeersReq) (*pb.List
 // GenPrivateKey generates PrivateKey for wireguard interface
 func (w *wireguard) GenPrivateKey(ctx context.Context, r *pb.PrivKeyReq) (*pb.PrivKeyResp, error) {
 
-	_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivateKeyName+"_priv")
+	_, err := generatePrivateKey(w.config.WgInterface.Dir + r.PrivateKeyName + "_priv")
 	if err != nil {
 		return &pb.PrivKeyResp{}, err
 	}
@@ -136,7 +136,7 @@ func (w *wireguard) GenPublicKey(ctx context.Context, r *pb.PubKeyReq) (*pb.PubK
 	// check whether private key exists or not, if not generate one
 	if _, err := os.Stat(w.config.WgInterface.Dir + r.PrivKeyName + "_pub"); os.IsNotExist(err) {
 		fmt.Printf("PrivateKeyFile is not exists, creating one ... %s\n", r.PrivKeyName)
-		_, err := generatePrivateKey(ctx, w.config.WgInterface.Dir+r.PrivKeyName+"_priv")
+		_, err := generatePrivateKey(w.config.WgInterface.Dir + r.PrivKeyName + "_priv")
 		if err != nil {
 			return &pb.PubKeyResp{Message: "Error"}, fmt.Errorf("error in generation of private key %v", err)
 		}
