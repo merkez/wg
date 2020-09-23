@@ -98,6 +98,16 @@ func (w *wireguard) GetNICInfo(ctx context.Context, r *pb.NICInfoReq) (*pb.NICIn
 	return &pb.NICInfoResp{Message: string(out)}, nil
 }
 
+func (w *wireguard) GetPeerStatus(ctx context.Context, in *pb.PeerStatusReq) (*pb.PeerStatusResp, error) {
+	publicKey := in.PublicKey
+	nicName := in.NicName
+	isConnected, err := checkStatus(nicName, publicKey)
+	if err != nil {
+		return &pb.PeerStatusResp{Status: false}, err
+	}
+	return &pb.PeerStatusResp{Status: isConnected}, nil
+}
+
 // ManageNIC is managing (up & down) given wireguard interface
 func (w *wireguard) ManageNIC(ctx context.Context, r *pb.ManageNICReq) (*pb.ManageNICResp, error) {
 	out, err := upDown(r.Nic, r.Cmd)

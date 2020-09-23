@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -23,19 +24,6 @@ const (
 	// wireguard should be installed before hand
 	wgManageBin = "sudo wg"
 	wgQuickBin  = "sudo wg-quick"
-	// interfaceTemplating would be much better for listing peers
-	// however it is not very crucial at the moment, would be improved in future
-
-//	interfaceTemp = `
-//interface: {{.InterfaceName}}
-//	public key: {{.PublicKey}}
-//	private key: {{.PrivateKey}}
-//	listening port: {{.ListeningPort}}
-//peer: {{.PublicKey}}
-//	allowed ips: {{.Allowed-ips}}
-//	latest handshake: {{.Latest-handshake}}
-//	transfer: {{.Transfer}}
-//`
 )
 
 var (
@@ -107,6 +95,33 @@ func listPeers(interfaceName string) (string, error) {
 	//	log.Warn().Msgf("executing template: %v", err)
 	//}
 	return string(out), err
+}
+
+func checkStatus(nicName, publicKey string) (bool, error) {
+	var listOfPeers []string
+	peerStatus := make(map[string]int)
+	cmd := wgManageBin + " show " + nicName + " latest-handshakes"
+	out, err := WireGuardCmd(cmd)
+	if err != nil {
+		return false, err
+	}
+	outStr := string(out)
+	listOfPeers = strings.Split(outStr, "\n")
+	for _, v := range listOfPeers {
+		peerInfoList := strings.Split(v, "\t")
+		if len(peerInfoList) == 2 {
+			n, err := strconv.Atoi(peerInfoList[1])
+			if err != nil {
+				return false, err
+			}
+			peerStatus[peerInfoList[0]] = n
+		}
+
+	}
+	if peerStatus[publicKey] == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 // wg show <name-of-interface>
