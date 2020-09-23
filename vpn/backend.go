@@ -204,6 +204,7 @@ func GetCreds(conf config.CertConfig) (credentials.TransportCredentials, error) 
 // SecureConn enables communication over secure channel
 func SecureConn(conf config.CertConfig) ([]grpc.ServerOption, error) {
 	if conf.Enabled {
+		log.Info().Msgf("Conf cert-file: %s, cert-key: %s ca: %s", conf.CertFile, conf.CertKey, conf.CAFile)
 		creds, err := GetCreds(conf)
 
 		if err != nil {

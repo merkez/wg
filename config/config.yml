@@ -9,7 +9,7 @@ GrpcConfig:
     port: 5353
   tls:
     enabled: false
-    cert-file:
+    certFile:
     cert-key:
     ca-file:
     directory:

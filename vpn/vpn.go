@@ -190,8 +190,6 @@ Address = %s
 ListenPort = %d
 SaveConfig = %v
 PrivateKey = %s
-PostUp = sysctl -w net.ipv4.ip_forward=1
-PostUp = sysctl -w net.ipv6.conf.all.forwarding=1
 PostUp = %siptables -t nat -A POSTROUTING -o %s -j MASQUERADE
 PostDown = %siptables -t nat -D POSTROUTING -o %s -j MASQUERADE`, i.address, i.listenPort, i.saveConfig, i.privateKey,
 		upRule, i.eth, downRule, i.eth)
