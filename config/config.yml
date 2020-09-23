@@ -10,8 +10,8 @@ GrpcConfig:
   tls:
     enabled: false
     certFile:
-    cert-key:
-    ca-file:
+    certKey:
+    caFile:
     directory:
   auth:
     aKey: deneme
