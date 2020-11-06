@@ -2,16 +2,15 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 	"runtime"
 
 	"github.com/spf13/viper"
 )
 
 var (
-	configuration          *Config
-	_, b, _, _             = runtime.Caller(0)
-	configurationDirectory = filepath.Join(filepath.Dir(b))
+	configuration *Config
+	_, b, _, _    = runtime.Caller(0)
+	//configurationDirectory = filepath.Join(filepath.Dir(b))
 )
 
 type Config struct {
@@ -44,10 +43,9 @@ type CertConfig struct {
 	CAFile    string
 }
 
-func InitializeConfig() (*Config, error) {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yml")
-	viper.AddConfigPath(configurationDirectory)
+func InitializeConfig(configPath string) (*Config, error) {
+	viper.AddConfigPath(configPath)
+	viper.SetConfigType("yaml")
 	err := viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("fatal error config file: config \n ", err)

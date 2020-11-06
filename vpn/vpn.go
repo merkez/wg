@@ -28,7 +28,7 @@ const (
 
 var (
 	// todo: fix configuration variables
-	configuration, _ = config.InitializeConfig()
+	configuration, _ = config.InitializeConfig(os.Getenv("CONFIG_PATH"))
 )
 
 type Interface struct {
