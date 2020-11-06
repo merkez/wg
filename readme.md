@@ -22,6 +22,25 @@ $ sudo apt install wireguard
 $ apt-get install wireguard-dkms wireguard-tools linux-headers-$(uname -r)
 ```
 
+## How to run through Docker Container
+
+```bash 
+$ docker build -t wg .
+ 
+$ docker run -e CONFIG_PATH=/app/ \ 
+            --name=wireguard-service
+            --net=host \
+            --cap-add=NET_ADMIN  \
+            --cap-add=SYS_MODULE \ 
+            -v /path/to/service/config:/app/
+            -v /lib/modules:/lib/modules \  
+            --sysctl="net.ipv4.conf.all.src_valid_mark=1" \ 
+             wg 
+```
+
+Docker will run only in Linux machines.`--net=host` is required because Wireguard service generates VPN endpoint ports randomly. 
+
+
 ## Available gRPC calls
 
 - **GenPrivateKey**
