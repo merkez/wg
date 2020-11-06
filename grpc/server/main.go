@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 
 	"github.com/mrturkmencom/wg/config"
@@ -14,9 +15,12 @@ import (
 	"github.com/mrturkmencom/wg/vpn"
 )
 
-func main() {
+var (
+	configPath = os.Getenv("CONFIG_PATH")
+)
 
-	configuration, err := config.InitializeConfig()
+func main() {
+	configuration, err := config.InitializeConfig(configPath)
 	if err != nil {
 		panic("Configuration initialization error: " + err.Error())
 	}
