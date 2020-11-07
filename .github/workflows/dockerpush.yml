@@ -1,0 +1,29 @@
+name: Build and  Publish Docker
+on:
+  push:
+    tags:
+      - 'v*.*.*' ## will be the tag of docker image
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Publish Server to Github Registry
+        uses: docker/build-push-action@v1
+        with:
+          repository: mrturkmencom/wg
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.pkg.github.com
+          tag_with_ref: true
+          tag_with_sha: true
+
+      - name: Publish server to dockerhub
+        uses: docker/build-push-action@v1
+        with:
+          repository: aaunetworksecurity/haaukins-store
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_H_PASSWORD }}
+          tag_with_ref: true
+          tag_with_sha: true
