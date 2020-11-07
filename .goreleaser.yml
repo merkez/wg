@@ -1,0 +1,84 @@
+# .goreleaser.yml
+before:
+  hooks:
+    - go mod tidy
+builds:
+  # You can have multiple builds defined as a yaml list
+  - # ID of the build.
+    # Defaults to the project name.
+    id: "wgservice"
+
+    env:
+      - CGO_ENABLED=0
+
+    main: ./grpc/server/main.go
+
+    binary: wgsservice
+
+    flags:
+      - -tags=netgo
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos:
+      - linux
+    goarch:
+      - 386
+      - amd64
+
+archives:
+  - # ID of this archive.
+    # Defaults to `default`.
+    id: wireguard_service
+
+    # Builds reference which build instances should be archived in this archive.
+    builds:
+      - wgservice
+
+    # Archive name template.
+    # Defaults:
+    # - if format is `tar.gz`, `gz` or `zip`:
+    #   - `{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}`
+    # - if format is `binary`:
+    #   - `{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}`
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+
+    # Replacements for GOOS and GOARCH in the archive name.
+    # Keys should be valid GOOSs or GOARCHs.
+    # Values are the respective replacements.
+    # Default is empty.
+    replacements:
+      amd64: 64-bit
+
+
+    # Set to true, if you want all files in the archive to be in a single directory.
+    # If set to true and you extract the archive 'goreleaser_Linux_arm64.tar.gz',
+    # you get a folder 'goreleaser_Linux_arm64'.
+    # If set to false, all files are extracted separately.
+    # You can also set it to a custom folder name (templating is supported).
+    # Default is false.
+    wrap_in_directory: true
+
+    # Archive format. Valid options are `tar.gz`, `gz`, `zip` and `binary`.
+    # If format is `binary`, no archives are created and the binaries are instead
+    # uploaded directly.
+    # Default is `tar.gz`.
+    format: zip
+
+    # Additional files/globs you want to add to the archive.
+    # Defaults are any files matching `LICENCE*`, `LICENSE*`,
+    # `README*` and `CHANGELOG*` (case-insensitive).
+    files:
+      - LICENSE
+      - readme.md
+      - dist/CHANGELOG.md
+
+checksum:
+  # You can change the name of the checksums file.
+  # Default is `{{ .ProjectName }}_{{ .Version }}_checksums.txt`.
+  name_template: "v_{{ .Version }}_{{ .ProjectName }}_checksums.txt"
+
+  # Algorithm to be used.
+  # Accepted options are sha256, sha512, sha1, crc32, md5, sha224 and sha384.
+  # Default is sha256.
+  algorithm: sha256
